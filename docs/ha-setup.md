@@ -10,11 +10,11 @@ Legend: 🧑 you do it (UI, phone, hardware) · 🤖 can be done via the HA MCP 
 
 - ✅ The board runs the UART RCP build. `scripts/rcp-probe.sh` reports Spinel 4.3, RCP API 11.
 - ✅ HA IPv6 = Automatic on `enp0s1`. Matter integration and Matter Server 9.2.0 running.
-- ✅ The OpenThread Border Router app 3.2.0 is **installed but stopped** (boot: auto).
+- ✅ The OpenThread Border Router app 3.2.0 is installed.
 - 🧑 Put the board on a **USB 2.0 extension cable**, away from the ZBT-2, the Mac and other
   USB 3 devices (INSTALL.md, Part B).
 
-## 1. Pass the CH343 UART bridge into the HA VM 🧑
+## 1. Pass the CH343 UART bridge into the HA VM 🧑 ✅ (2026-09-26)
 
 `utmctl usb connect` fails on UTM 4.7.5 with "OSStatus error -2700 / The device cannot be
 found", by VID:PID and by location alike. So use the UTM window:
@@ -25,14 +25,14 @@ found", by VID:PID and by location alike. So use the UTM window:
 3. On the Mac, `ls /dev/cu.usbmodem5AF6*` should now find nothing; the VM owns the port.
 
 **Verify** in HA: **Settings → System → Hardware → ⋮ → All hardware**, search `tty`. A new
-entry should appear next to `/dev/ttyACM0` (the ZBT-2), expected
-`/dev/serial/by-id/usb-1a86_USB_Single_Serial_XXXXXXXXXX-if00` ⚠️. Always use the
+entry appears next to `/dev/ttyACM0` (the ZBT-2): **confirmed** `/dev/ttyACM1` =
+`/dev/serial/by-id/usb-1a86_USB_Single_Serial_XXXXXXXXXX-if00`. Always use the
 `by-id` path in the app; `/dev/ttyACMx` numbering can change between boots.
 
 ⚠️ Check after the next Mac/VM reboot whether UTM re-attaches the device by itself. If not,
 repeat this step after each reboot. Open issue in CLAUDE.md.
 
-## 2. Configure and start the OTBR app 🤖/🧑
+## 2. Configure and start the OTBR app 🤖/🧑 ✅ (done via MCP)
 
 **Settings → Apps → OpenThread Border Router → Configuration:**
 
@@ -47,19 +47,32 @@ repeat this step after each reboot. Open issue in CLAUDE.md.
 **Info tab:** Start on boot **on**, Watchdog **on**. Then **Start**.
 
 **Verify, Log tab:** the settings migration reads the RCP's hardware address
-`1051dbfffexxxxxx` ⚠️, `otbr-agent` starts, and there are no repeating `RCP failure` /
-`Failed to communicate with RCP` lines.
+(`10 51 db ff fe xx xx xx`), `otbr-agent` starts, and there are no repeating
+`RCP failure` / `Failed to communicate with RCP` lines. Seen on 2026-09-26:
 
-## 3. Add the OpenThread Border Router integration 🤖/🧑
+```
+Opening a serial connection to '/dev/serial/by-id/usb-1a86_…' (baudrate=460800, xonxoff=False, rtscts=False)
+Setting modem pins: ModemPins[!dtr !rts]
+[NOTE]-AGENT---: Running 0.3.0-337711e7
+[NOTE]-AGENT---: Thread version: 1.4.0
+[NOTE]-AGENT---: Radio URL: spinel+hdlc+uart:///dev/serial/by-id/usb-1a86_USB_Single_Serial_XXXXXXXXXX-if00?uart-baudrate=460800&uart-init-deassert
+[N] Mle-----------: Role detached -> leader
+```
 
-**Settings → Devices & services**: accept the discovered **OpenThread Border Router**.
+The `[W] P-Netif … Failed to process request#N: No such process` and `Failed to write CLI
+output: Broken pipe` lines at startup are harmless noise.
+
+## 3. Add the OpenThread Border Router integration ✅ (automatic)
+
+Nothing to do. Discovery from HA's own app (`source: hassio`) sets up the **OpenThread
+Border Router** integration automatically, within a second of the app starting.
 
 What happens here: HA's OTBR config flow (`otbr/config_flow.py`, `_set_dataset`) loads the
 current **preferred** Thread dataset into the empty radio. That is still the orphaned
 **MyHomeNNNNNNNNNN** (channel 25) from the broken Aqara hub, so the C6 briefly forms that
 network. Step 4 replaces it.
 
-## 4. Replace it with a fresh HA-owned network on channel 15 🤖/🧑
+## 4. Replace it with a fresh HA-owned network on channel 15 ✅ (done via MCP)
 
 HA refuses to delete the preferred dataset (`DatasetPreferredError`), so the order matters:
 
@@ -70,12 +83,26 @@ HA refuses to delete the preferred dataset (`DatasetPreferredError`), so the ord
 2. On the new network, **Make preferred network**.
 3. On **MyHomeNNNNNNNNNN**, **⋮ → Delete** (allowed now that it isn't preferred).
 
-**Verify:** exactly one network remains, marked preferred, channel 15, with this border
-router listed under it. From the Mac:
+Done on 2026-09-26 with the equivalent websocket commands: `otbr/create_network`,
+`thread/set_preferred_dataset`, `thread/set_preferred_border_agent`, `thread/delete_dataset`.
+Result:
+
+| Network | Channel | PAN ID | Extended PAN ID | Preferred border agent |
+|---|---|---|---|---|
+| **ha-thread-XXXX** | 15 | 0xXXXX | <ext-pan-id> | <border-agent-id>, ext. address <ext-address> |
+
+**Then restart the OTBR app.** After the network change, the border router kept advertising
+the **old** network name in its mDNS `_meshcop._udp` record. A restart fixed it. An iPhone
+looking for the preferred network's border router could otherwise miss it.
+
+**Verify:** exactly one network remains, marked preferred, channel 15. From the Mac:
 
 ```sh
-dns-sd -B _meshcop._udp     # should list the HA border router
+dns-sd -B _meshcop._udp
+dns-sd -L "Home Assistant OpenThread Border Router #XXXX" _meshcop._udp local.   # TXT nn=ha-thread-XXXX
 ```
+
+The suffix is the last 2 bytes of the border router's extended address.
 
 ## 5. Send the Thread credentials to the iPhone 🧑
 

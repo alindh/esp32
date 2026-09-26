@@ -144,5 +144,14 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 7. `utmctl usb connect` (UTM 4.7.5) fails for the CH343 with "OSStatus error -2700 / The device
    cannot be found", both by VID:PID and by location. Passthrough is done in the UTM GUI.
    Unknown: does UTM re-attach it after a VM or Mac reboot?
-8. Phase 4 progress: OTBR app 3.2.0 installed via MCP 2026-09-26 (stopped; defaults still
-   flow_control true, and no device). Checklist: docs/ha-setup.md.
+8. Phase 4 progress (2026-09-26): CH343 passed to the VM via the UTM GUI → `/dev/ttyACM1` =
+   `/dev/serial/by-id/usb-1a86_USB_Single_Serial_XXXXXXXXXX-if00`. OTBR app configured
+   (460800, flow_control false, watchdog on, boot auto) and started; agent 0.3.0-337711e7,
+   Thread 1.4. The otbr integration was auto-added (source hassio) and imported MyHome (ch 25),
+   as predicted. Then create_network → **ha-thread-XXXX, ch 15, PAN 0xXXXX, ext PAN
+   <ext-pan-id>**, set preferred (dataset <dataset-id>, border agent
+   <border-agent-id>, ext addr <ext-address>), MyHome deleted.
+   **Gotcha:** after create_network, the meshcop mDNS record still said nn=MyHome…; an app
+   restart republished it (#XXXX, nn=ha-thread-XXXX). The old #YYYY record still resolved from
+   the Mac afterwards, likely the mDNS cache; recheck.
+   Remaining: iPhone "Send credentials to phone", then commission the TIMMERFLOTTE.
