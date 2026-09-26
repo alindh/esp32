@@ -1,0 +1,77 @@
+# CLAUDE.md — ESP32-C6 OpenThread RCP for Home Assistant
+
+Project log: decisions, pinned versions, open issues. Keep it current with every change.
+
+## Goal
+
+Waveshare ESP32-C6-DEV-KIT-N8 flashed with ESP-IDF `examples/openthread/ot_rcp`, plugged
+into the Home Assistant host by USB. HA's OpenThread Border Router app drives it. The
+first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
+
+## Working rules (from the user)
+
+- Ask, then propose a plan before writing code. Stop at the phase boundaries the user sets.
+- Verify facts against current Espressif and Home Assistant docs, not memory. Record the
+  source and check date.
+- Small commits with clear messages.
+- Phases: 1 INSTALL.md → 2 repo, build and flash → 3 UART vs USB Serial/JTAG and
+  sdkconfig → 4 HA checklist → 5 troubleshooting doc.
+
+## Environment facts
+
+- Dev machine: macOS 26.3, Apple Silicon (arm64), Homebrew 7.x, Python 3.14 (Homebrew).
+- Container runtime: **Colima**, profile `default`, aarch64 with the vz VM type.
+  **It only shares `/Volumes/Work`.** `~/Projects/esp32` resolves to the same folder on
+  macOS, but a container sees it as an empty directory. Scripts must mount the real path:
+  `cd "$(dirname "$0")" && pwd -P`, which is under `/Volumes/Work/...`.
+- Docker Desktop and Colima on macOS cannot pass USB into containers. Build in the
+  container, flash with host `esptool`.
+
+## Decisions
+
+| Date | Decision | Why |
+|---|---|---|
+| 2026-09-26 | Build in `espressif/idf` container pinned by digest. Flash with host esptool (Homebrew). | Reproducible toolchain, native arm64, and no USB passthrough on macOS. |
+| 2026-09-26 | ESP-IDF **v6.1** (fallback v6.0.3) | v6.1 is the current stable release, marked Latest. It has the newest OpenThread for a host running OTBR POSIX v2026.08. |
+| 2026-09-26 | Assume HA OS/Supervised | Apps (ex add-ons) require Supervisor. Not yet confirmed by the user. |
+
+## Pinned versions (checked 2026-09-26)
+
+| Component | Version / pin |
+|---|---|
+| ESP-IDF | `v6.1`, tag commit `fff9895c82d744c7237be8847347bdd1b07c6643` |
+| Docker image | `espressif/idf:v6.1@sha256:81893c71bb5e570088901f21def8684c25cd2a9020281bd01b843a7655edb18c` (amd64+arm64 index) |
+| esptool (host) | 5.4.0 (Homebrew). CLI: `esptool`, hyphenated subcommands (`write-flash`) |
+| HA OTBR app | 3.2.0 (OTBR POSIX `v2026.08.0`). Requires HA Core ≥ 2025.7.0 |
+| HA Matter Server app | 9.2.0 (matter.js server 1.4.0) |
+
+## Hardware facts
+
+- Board has **one USB-C** → **CH334 USB hub** → (a) **CH343** USB-UART bridge to C6 UART0
+  and (b) C6 native **USB Serial/JTAG**. One cable exposes two serial ports. Source: Waveshare wiki.
+- Waveshare says the board is pin-compatible with ESP32-C6-DevKitC-1. That implies UART0
+  TX=GPIO16, RX=GPIO17 and an RGB LED on GPIO8. ⚠️ Not verified from a Waveshare schematic.
+- Unknown: whether CH343 RTS/CTS are wired to C6 GPIOs. Probably not, since only DTR/RTS
+  auto-reset is typical. Matters for flow control.
+
+## Key compatibility facts
+
+- `ot_rcp` UART config in v6.1 `main/esp_ot_config.h`: **460800 baud, 8N1,
+  `UART_HW_FLOWCTRL_DISABLE`**. The transport is chosen by Kconfig: `OPENTHREAD_RCP_UART`,
+  `OPENTHREAD_RCP_SPI` or `OPENTHREAD_RCP_USB_SERIAL_JTAG`.
+- HA OTBR app defaults: `baudrate: "460800"`, **`flow_control: true`**. The allowed
+  baudrates are 57600, 115200, 230400, 460800, 921600 and 1000000. ⇒ **must set
+  `flow_control: false`** for stock ot_rcp over UART.
+- TIMMERFLOTTE: Matter Server 9.0.x PASE-timeout bug (home-assistant/addons#4677, closed
+  as not planned). Static IPv6 on HA broke IKEA Matter pairing for at least one user, so
+  use IPv6 Automatic.
+
+## Open issues
+
+1. **Colima VM disk full** (96 GB, ~87 GB of orphaned buildkit layers from 2025). The
+   ESP-IDF image pull failed. The user must choose a fix; see INSTALL.md A3. Nothing
+   was deleted.
+2. Unknown user inputs: HA install type and hardware, USB 2.0 ports on the host, phone
+   OS, and whether they own Apple or Google Thread border routers.
+3. Confirm the macOS device names and VIDs/PIDs for both ports once the board is plugged in.
+4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG.
