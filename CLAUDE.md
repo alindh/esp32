@@ -141,3 +141,8 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    present but mute, as in the earlier stuck state (no power cycle possible remotely). The board
    was reflashed with the UART build and the probe OK: Spinel 4.3, RCP API 11.
 6. Confirm the Linux `/dev/serial/by-id/` names inside the HA VM after passthrough.
+7. `utmctl usb connect` (UTM 4.7.5) fails for the CH343 with "OSStatus error -2700 / The device
+   cannot be found", both by VID:PID and by location. Passthrough is done in the UTM GUI.
+   Unknown: does UTM re-attach it after a VM or Mac reboot?
+8. Phase 4 progress: OTBR app 3.2.0 installed via MCP 2026-09-26 (stopped; defaults still
+   flow_control true, and no device). Checklist: docs/ha-setup.md.
