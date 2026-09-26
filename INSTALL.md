@@ -18,7 +18,7 @@ from an official source and must be checked when you do that step.
 | Phone | **iPhone18,4, iOS 27.0, HA app 2026.9.1, location permission "Always"** | Uses "Send credentials to phone" in the HA app. |
 | Other radios | Home Assistant **Connect ZBT-2**, passed to the VM, **stays on Zigbee** under **Zigbee2MQTT** (not ZHA). There is also a **Hue Bridge** with its own Zigbee network, and an **Aqara Hub M100**, which can be a Thread border router. | The C6 does Thread only. Keep the two radios apart and on non-overlapping channels. |
 | Zigbee | ZBT-2 on **channel 11** (2405 MHz), PAN ID 5047 | Thread must use a different 802.15.4 channel, well away from 11. |
-| Other Thread border routers | None seen on the LAN via mDNS on 2026-09-26. **But HA already stores an Apple-style Thread network, see B2.5.** | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
+| Other Thread border routers | None. The Aqara Hub M100 is broken. HA still stores an orphaned Thread network from it or the iPhone, which will be replaced (B2.5). | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
 | Board | Waveshare ESP32-C6-DEV-KIT-N8 | See A6 for the ports. |
 
 ---
@@ -238,8 +238,11 @@ Found on 2026-09-26 in **Settings → Devices & services → Thread**:
   loads the **preferred** network into it (`otbr/config_flow.py`, `_set_dataset`). Only
   when no preferred network exists does it create a new one on channel 15. So as things
   stand, the C6 would **join MyHomeNNNNNNNNNN on channel 25**.
-- **Decision needed before phase 4:** keep this network or start fresh. See CLAUDE.md
-  open issues.
+- **Decided 2026-09-26: start fresh.** The Aqara hub is broken, there is no Apple hub,
+  and HA has no Matter devices, so nothing uses MyHomeNNNNNNNNNN. In phase 4, before
+  adding the OTBR integration, delete it under **Settings → Devices & services →
+  Thread → Configure**. HA then creates its own network on channel 15. This is
+  reversible: the iPhone still holds the old credentials and can resend them.
 
 ---
 
@@ -342,7 +345,7 @@ network, which avoids the most common "wrong preferred network" problem.
 - [ ] OTBR app installed but not started (C3)
 - [x] Matter integration + Matter Server 9.2.0 (C5)
 - [x] iOS 27.0, HA app 2026.9.1 (D)
-- [ ] Decide: keep Thread network MyHomeNNNNNNNNNN (ch 25) or create a fresh one (B2.5)
+- [x] Decided: fresh HA-owned Thread network, channel 15; delete MyHomeNNNNNNNNNN in phase 4 (B2.5)
 - [x] ZBT-2 Zigbee channel 11 (2405 MHz), PAN ID 5047 (from Zigbee2MQTT)
 - [ ] Hue Bridge Zigbee channel (Hue app → Settings → Bridge → Zigbee channel)
 - [ ] 2.4 GHz Wi-Fi channel used by "<home 2.4 GHz SSID>" (check the router/AP admin page; note if it is set to Auto). Needed to confirm the Thread channel.
