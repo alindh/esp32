@@ -66,8 +66,9 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
   EUI-64 10:51:db:ff:fe:xx:xx:xx; RCP API version 11; min host RCP API version 4.
 - **Build performance**: Colima `default` has 16 vCPUs on a 10-core Mac that also runs the HA VM.
   An uncapped ninja (18 jobs) spent more than 25 min at ~55% guest sys time; capped at
-  `-j 8 --cpus 8` it builds in ~35 s. Consider `colima stop && colima start --cpu 8` (the user's
-  call; Colima is used only for this project).
+  `-j 8 --cpus 8` it builds in ~35 s. The user restarted Colima with **8 CPUs** on 2026-09-26. The rebuild after that matched the
+  pinned hashes. After the restart the `colima` Docker context was briefly missing; Colima
+  re-registered it itself.
 - macOS ships bash 3.2: an empty array under `set -u` is "unbound". Use `${a[@]+"${a[@]}"}`.
 - The user's shell aliases `cat` to `bat`. Use `command cat` / `od` in scripts and checks.
 
@@ -92,7 +93,10 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
   DIS_USB_JTAG=0, DIS_DOWNLOAD_MODE=0). Cause unknown. It enumerates fine as 303a:1001.
   Retested with the RCP firmware flashed: still no response. A failed attempt can leave the chip
   in the ROM bootloader; `esptool --port <CH343> chip-id` (hard reset) recovers it.
-  Not yet tried: replug, or holding BOOT while plugging in.
+  **Update 2026-09-26 12:08: after the user rebooted/replugged the board, `esptool chip-id` over
+  native USB (`/dev/cu.usbmodem831401`) connects fine.** The earlier failures were a stuck
+  USB Serial/JTAG state that survived EN resets and cleared only with a power cycle. Both ports
+  are usable. Phase 3 should test whether that stuck state recurs (RCP resets, OTBR restarts).
 - Unknown: whether CH343 RTS/CTS are wired to C6 GPIOs. Probably not, since only DTR/RTS
   auto-reset is typical. Matters for flow control.
 
@@ -130,4 +134,4 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)
    re-enumerates USB Serial/JTAG. The CH343 stays enumerated across C6 resets. Also check
    whether the OTBR opening the port toggles DTR/RTS and triggers the auto-reset circuit.
-4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART, and the native USB link is currently not working from macOS (see Hardware facts).
+4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART. Native USB works after a power cycle but was seen stuck once (see Hardware facts).
