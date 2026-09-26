@@ -49,6 +49,28 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 | HA OTBR app | 3.2.0 (OTBR POSIX `v2026.08.0`). Requires HA Core ≥ 2025.7.0 |
 | HA Matter Server app | 9.2.0 (matter.js server 1.4.0) |
 
+## Build & firmware facts (verified 2026-09-26)
+
+- `scripts/build.sh` → `dist/`. It copies `$IDF_PATH/examples/openthread/ot_rcp` unmodified and
+  applies `firmware/sdkconfig.defaults.project` via `SDKCONFIG_DEFAULTS`, which is a list.
+- **Reproducible**: the SHA-256 of 2 clean builds (ccache volume removed) and 1 cached build
+  match. It needs `CONFIG_APP_REPRODUCIBLE_BUILD=y` **and** `SOURCE_DATE_EPOCH` = IDF commit
+  time (1787628068). ESP-IDF's `components/openthread/CMakeLists.txt:57` uses
+  `string(TIMESTAMP … UTC)` for the RCP version string, and without it the app hash changed on
+  every build.
+- Merged image SHA-256 `ae15413036e029e9cad505118b1586c0c415cb93fcdf9640bec14a640aad8568`
+  (app `00aeb428…bb6bc77`). App size 0x459c0, 73% of the 1 MB factory partition free.
+- `CONFIG_ESPTOOLPY_FLASHSIZE="2MB"` (example default) on an 8 MB chip: harmless, left as is.
+- **Flashed and verified on the board**: Spinel protocol 4.3; RCP version
+  `openthread-esp32/fff9895c82d-b678a4f63; esp32c6;  2026-08-25 03:21:08 UTC`;
+  EUI-64 10:51:db:ff:fe:xx:xx:xx; RCP API version 11; min host RCP API version 4.
+- **Build performance**: Colima `default` has 16 vCPUs on a 10-core Mac that also runs the HA VM.
+  An uncapped ninja (18 jobs) spent more than 25 min at ~55% guest sys time; capped at
+  `-j 8 --cpus 8` it builds in ~35 s. Consider `colima stop && colima start --cpu 8` (the user's
+  call; Colima is used only for this project).
+- macOS ships bash 3.2: an empty array under `set -u` is "unbound". Use `${a[@]+"${a[@]}"}`.
+- The user's shell aliases `cat` to `bat`. Use `command cat` / `od` in scripts and checks.
+
 ## Hardware facts
 
 - Board has **one USB-C** → **CH334 USB hub** → (a) **CH343** USB-UART bridge to C6 UART0
@@ -58,6 +80,19 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 - Confirmed on the Mac: CH334 hub `1a86:8091`; CH343 `1a86:55d3` = `/dev/cu.usbmodemXXXXXXXXXX1`;
   USB Serial/JTAG `303a:1001` = `/dev/cu.usbmodem831401`. No driver needed.
   Both run at USB full speed (12 Mb/s). The board and the ZBT-2 sit on the same Apple hub.
+- Probed 2026-09-26 with esptool 5.4.0: chip ESP32-C6 (QFN40) rev v0.2, 8 MB flash, base MAC
+  10:51:db:xx:xx:xx. Factory firmware: Waveshare "blink" test app (ESP-IDF v5.1-dirty). Its ROM log
+  shows a bootloader "SHA-256 comparison failed … Attempting to boot anyway"; harmless, and
+  replaced by our flash.
+- **CH343 port works for flashing**; DTR/RTS auto-reset works (RTS pulse = rst:0x1 POWERON;
+  RTS then DTR = DOWNLOAD mode).
+- **Native USB Serial/JTAG (`/dev/cu.usbmodem831401`) never answers esptool**, not even with the
+  ROM confirmed in "waiting for download" (strapped via the CH343 lines, no UART sync, 1.5 s
+  settle, `--before no-reset --no-stub`). eFuses are clean (DIS_USB_SERIAL_JTAG=0,
+  DIS_USB_JTAG=0, DIS_DOWNLOAD_MODE=0). Cause unknown. It enumerates fine as 303a:1001.
+  Retested with the RCP firmware flashed: still no response. A failed attempt can leave the chip
+  in the ROM bootloader; `esptool --port <CH343> chip-id` (hard reset) recovers it.
+  Not yet tried: replug, or holding BOOT while plugging in.
 - Unknown: whether CH343 RTS/CTS are wired to C6 GPIOs. Probably not, since only DTR/RTS
   auto-reset is typical. Matters for flow control.
 
@@ -95,4 +130,4 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)
    re-enumerates USB Serial/JTAG. The CH343 stays enumerated across C6 resets. Also check
    whether the OTBR opening the port toggles DTR/RTS and triggers the auto-reset circuit.
-4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART.
+4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART, and the native USB link is currently not working from macOS (see Hardware facts).
