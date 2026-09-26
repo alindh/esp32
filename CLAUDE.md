@@ -36,7 +36,7 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 | 2026-09-26 | HA = HAOS 17.0.rc1 aarch64 in a UTM (QEMU) VM on this Mac, bridged to `en0` | Confirmed by the user and the running VM. The RCP reaches it by UTM USB redirection. |
 | 2026-09-26 | ZBT-2 stays on Zigbee; the C6 is the only Thread radio | User decision. Radios must be separated and channels coordinated. |
 | 2026-09-26 | iPhone uses untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>", the same LAN as HA on `en0`; not IoT_Network | User. Needed for mDNS `_meshcop._udp` discovery during commissioning. |
-| 2026-09-26 | Thread channel: **15** (HA default) unless the 2.4 GHz Wi-Fi channel argues otherwise; alternative 25 | ZBT-2 Zigbee = channel 11 (2405 MHz), PAN ID 0x5047? (user said "5047"). 802.15.4 ch 15 = 2425 MHz, 20 MHz from Zigbee and in the gap between Wi-Fi ch 1 and 6. Ch 25 (2475 MHz) overlaps EU Wi-Fi ch 12–13. HA core `otbr/websocket_api.py` creates networks with `DEFAULT_CHANNEL = 15`; `get_allowed_channel` only restricts multiprotocol radios. `otbr/set_channel` can migrate later. |
+| 2026-09-26 | Thread channel: **15** (HA default) unless the 2.4 GHz Wi-Fi channel argues otherwise; alternative 25 | ZBT-2 Zigbee = channel 11 (2405 MHz), PAN ID 5047 (as shown in ZHA). 802.15.4 ch 15 = 2425 MHz, 20 MHz from Zigbee and in the gap between Wi-Fi ch 1 and 6. Ch 25 (2475 MHz) overlaps EU Wi-Fi ch 12–13. HA core `otbr/websocket_api.py` creates networks with `DEFAULT_CHANNEL = 15`; `get_allowed_channel` only restricts multiprotocol radios. `otbr/set_channel` can migrate later. |
 | 2026-09-26 | Phone = iPhone; no other Thread BRs | User. Credential sync uses "Send credentials to phone". |
 
 ## Pinned versions (checked 2026-09-26)
