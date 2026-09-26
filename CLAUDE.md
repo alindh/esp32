@@ -35,6 +35,7 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 | 2026-09-26 | ESP-IDF **v6.1** (fallback v6.0.3) | v6.1 is the current stable release, marked Latest. It has the newest OpenThread for a host running OTBR POSIX v2026.08. |
 | 2026-09-26 | HA = HAOS 17.0.rc1 aarch64 in a UTM (QEMU) VM on this Mac, bridged to `en0` | Confirmed by the user and the running VM. The RCP reaches it by UTM USB redirection. |
 | 2026-09-26 | ZBT-2 stays on Zigbee; the C6 is the only Thread radio | User decision. Radios must be separated and channels coordinated. |
+| 2026-09-26 | iPhone uses untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>", the same LAN as HA on `en0`; not IoT_Network | User. Needed for mDNS `_meshcop._udp` discovery during commissioning. |
 | 2026-09-26 | Phone = iPhone; no other Thread BRs | User. Credential sync uses "Send credentials to phone". |
 
 ## Pinned versions (checked 2026-09-26)
@@ -76,8 +77,7 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 1. ~~Colima VM disk full~~ **Resolved 2026-09-26.** The legacy `/var/lib/docker/overlay2`
    (~89 GB) was deleted with user approval. Docker 29 uses the containerd snapshotter,
    so it was unreferenced. Image v6.1 is pulled and `idf.py --version` = ESP-IDF v6.1.
-2. Open questions for the user: which Wi-Fi/VLAN the iPhone is on (HA is on untagged `en0`;
-   the Mac also has an `IoT_Network` VLAN), the ZBT-2's Zigbee channel, and whether UTM
+2. Open questions for the user: the ZBT-2's Zigbee channel, and whether UTM
    autostarts the VM.
 3. Phase 3 input: in a VM, a USB device that re-enumerates can drop out of UTM's USB
    redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)

@@ -209,12 +209,19 @@ Checked on 2026-09-26 from the running VM. Items to confirm in UTM are marked �
 
 ### B2.4 Same network for the iPhone and HA
 
-- **⚠️ Tell me:** which Wi-Fi network (SSID/VLAN) does your iPhone use? HA is bridged to
-  the **untagged** LAN on `en0`, not the "IoT_Network" VLAN.
-- **Why:** during commissioning the iPhone must see HA's Thread border router via mDNS
-  (`_meshcop._udp`). It also has to reach HA directly on the LAN. mDNS and IPv6 link-local
-  traffic don't cross VLANs or subnets unless you run an mDNS reflector. If the iPhone is
-  on another VLAN, pairing fails with "Thread border router required".
+- **Confirmed 2026-09-26:** the iPhone uses the Wi-Fi networks **"<home 2.4 GHz SSID>"** and
+  **"<home SSID>"**. Both are **untagged**, so they share a LAN with HA on `en0`. Keep the
+  iPhone off the "IoT_Network" VLAN during commissioning.
+- **Verify (after the OTBR app is started in phase 4):** from the Mac, which is on the
+  same LAN, run the command below. HA's border router should appear within a few seconds.
+  If the Mac sees it but the iPhone still reports "Thread border router required", check
+  the access point for multicast filtering or "multicast to unicast" and IGMP-snooping
+  options.
+  ```sh
+  dns-sd -B _meshcop._udp
+  ```
+- **Why:** during commissioning the iPhone must find HA's Thread border router via mDNS
+  and reach HA directly. mDNS and IPv6 link-local traffic don't cross VLANs.
 
 ---
 
@@ -308,7 +315,7 @@ network, which avoids the most common "wrong preferred network" problem.
 - [x] Board ports identified; no driver needed (A6)
 - [ ] Two USB 2.0 extension cables in hand (B)
 - [ ] UTM starts the VM after a Mac reboot (B2.2)
-- [ ] Which Wi-Fi/VLAN the iPhone is on (B2.4)
+- [x] iPhone on untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>" (B2.4)
 - [ ] HA Core version; IPv6 set to Automatic (C1, C2)
 - [ ] OTBR app installed but not started; Matter Server app version (C3, C5)
 - [ ] iOS version (D)
