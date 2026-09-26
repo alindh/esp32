@@ -33,7 +33,9 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 |---|---|---|
 | 2026-09-26 | Build in `espressif/idf` container pinned by digest. Flash with host esptool (Homebrew). | Reproducible toolchain, native arm64, and no USB passthrough on macOS. |
 | 2026-09-26 | ESP-IDF **v6.1** (fallback v6.0.3) | v6.1 is the current stable release, marked Latest. It has the newest OpenThread for a host running OTBR POSIX v2026.08. |
-| 2026-09-26 | Assume HA OS/Supervised | Apps (ex add-ons) require Supervisor. Not yet confirmed by the user. |
+| 2026-09-26 | HA = HAOS 17.0.rc1 aarch64 in a UTM (QEMU) VM on this Mac, bridged to `en0` | Confirmed by the user and the running VM. The RCP reaches it by UTM USB redirection. |
+| 2026-09-26 | ZBT-2 stays on Zigbee; the C6 is the only Thread radio | User decision. Radios must be separated and channels coordinated. |
+| 2026-09-26 | Phone = iPhone; no other Thread BRs | User. Credential sync uses "Send credentials to phone". |
 
 ## Pinned versions (checked 2026-09-26)
 
@@ -51,6 +53,9 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
   and (b) C6 native **USB Serial/JTAG**. One cable exposes two serial ports. Source: Waveshare wiki.
 - Waveshare says the board is pin-compatible with ESP32-C6-DevKitC-1. That implies UART0
   TX=GPIO16, RX=GPIO17 and an RGB LED on GPIO8. ⚠️ Not verified from a Waveshare schematic.
+- Confirmed on the Mac: CH334 hub `1a86:8091`; CH343 `1a86:55d3` = `/dev/cu.usbmodemXXXXXXXXXX1`;
+  USB Serial/JTAG `303a:1001` = `/dev/cu.usbmodem831401`. No driver needed.
+  Both run at USB full speed (12 Mb/s). The board and the ZBT-2 sit on the same Apple hub.
 - Unknown: whether CH343 RTS/CTS are wired to C6 GPIOs. Probably not, since only DTR/RTS
   auto-reset is typical. Matters for flow control.
 
@@ -71,7 +76,11 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 1. ~~Colima VM disk full~~ **Resolved 2026-09-26.** The legacy `/var/lib/docker/overlay2`
    (~89 GB) was deleted with user approval. Docker 29 uses the containerd snapshotter,
    so it was unreferenced. Image v6.1 is pulled and `idf.py --version` = ESP-IDF v6.1.
-2. Unknown user inputs: HA install type and hardware, USB 2.0 ports on the host, phone
-   OS, and whether they own Apple or Google Thread border routers.
-3. Confirm the macOS device names and VIDs/PIDs for both ports once the board is plugged in.
-4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG.
+2. Open questions for the user: which Wi-Fi/VLAN the iPhone is on (HA is on untagged `en0`;
+   the Mac also has an `IoT_Network` VLAN), the ZBT-2's Zigbee channel, and whether UTM
+   autostarts the VM.
+3. Phase 3 input: in a VM, a USB device that re-enumerates can drop out of UTM's USB
+   redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)
+   re-enumerates USB Serial/JTAG. The CH343 stays enumerated across C6 resets. Also check
+   whether the OTBR opening the port toggles DTR/RTS and triggers the auto-reset circuit.
+4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART.

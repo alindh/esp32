@@ -7,15 +7,18 @@ Facts below were checked against Espressif, Waveshare and Home Assistant sources
 **2026-09-26**. Sources are listed at the bottom. Items marked ⚠️ could not be confirmed
 from an official source and must be checked when you do that step.
 
-## Assumptions (tell me if any are wrong)
+## Your setup (confirmed 2026-09-26)
 
-| Thing | Assumed | Why it matters |
+| Thing | Value | Why it matters |
 |---|---|---|
-| Dev machine | macOS 26 on Apple Silicon (arm64) | Detected on this machine. |
-| Container runtime | Colima (already installed, `default` profile, aarch64) | Detected. Build runs in a container, flashing runs on the Mac. |
-| Home Assistant | **Home Assistant OS** (or Supervised), any hardware | Apps (formerly "add-ons") only exist on HA OS / Supervised. HA Container or Core needs a different OTBR setup. |
-| Phone | Not yet known. Both iOS and Android are covered below. | Thread credential sync differs per OS. |
-| Board | Waveshare ESP32-C6-DEV-KIT-N8 (ESP32-C6-WROOM-1-N8) | Determines USB chips and ports. |
+| Dev machine | macOS 26.3, Apple Silicon | Build in a container, flash from the Mac. |
+| Container runtime | Colima, `default` profile, aarch64 | Only `/Volumes/Work` is shared into containers. |
+| Home Assistant | **HAOS 17.0.rc1 (aarch64) in a UTM VM on this same Mac** (QEMU backend, `/Volumes/Work/VM/Home Assistant.utm`) | The C6 reaches HA by UTM USB passthrough, and the VM's network must carry IPv6 and multicast. |
+| VM network | UTM **bridged** to `en0` (wired Ethernet) | Good: HA sits directly on your LAN. The Mac also has a VLAN "IoT_Network" on `en0`; HA is on the untagged LAN. |
+| Phone | **iPhone** | Uses "Send credentials to phone" in the HA app. |
+| Other radios | Home Assistant **Connect ZBT-2**, passed to the VM, **stays on Zigbee** | The C6 does Thread only. Keep the two radios apart and on non-overlapping channels. |
+| Other Thread border routers | None | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
+| Board | Waveshare ESP32-C6-DEV-KIT-N8 | See A6 for the ports. |
 
 ---
 
@@ -110,13 +113,14 @@ toolchain under you.
 What the board has, per Waveshare: **one USB-C port** feeding an onboard **CH334 USB
 hub**. Behind the hub are two USB devices, so one cable gives you **two serial ports**:
 
-| Port | Chip | USB VID:PID ⚠️ | Typical macOS name ⚠️ |
+| Port | Chip | USB VID:PID | macOS device (confirmed on your Mac) |
 |---|---|---|---|
-| UART bridge | WCH **CH343** → ESP32-C6 UART0 | `1a86:55d3` | `/dev/cu.usbmodem…` |
-| Native USB | ESP32-C6 **USB Serial/JTAG** | `303a:1001` | `/dev/cu.usbmodem…` |
+| (hub) | WCH **CH334** | `1a86:8091` | — |
+| UART bridge | WCH **CH343** → ESP32-C6 UART0 (name "USB Single Serial") | `1a86:55d3` | `/dev/cu.usbmodemXXXXXXXXXX1` |
+| Native USB | ESP32-C6 **USB Serial/JTAG** (name "USB JTAG/serial debug unit") | `303a:1001` | `/dev/cu.usbmodem831401` |
 
-Both chips are USB CDC-ACM devices, which macOS supports with its built-in driver.
-Neither Espressif's nor Waveshare's docs say this explicitly for macOS 26, hence ⚠️.
+**Confirmed 2026-09-26: no driver is needed.** Both ports appeared with macOS's built-in
+CDC driver. The names can change if you move the board to another USB port.
 
 - **Install:** nothing yet. Plug the board in with a **data-capable** USB-C cable.
 - **Verify:**
@@ -127,8 +131,6 @@ Neither Espressif's nor Waveshare's docs say this explicitly for macOS 26, hence
   # and "USB JTAG/serial debug unit" (idVendor 12346 = 0x303a)
   esptool --port /dev/cu.usbmodemXXXX chip-id   # run on each port: both should report ESP32-C6
   ```
-  Send me the output of the `ls` and `ioreg` commands. I'll pin the exact device names
-  in the repo.
 - **Fallback, only if no CH343 port appears:** install WCH's macOS driver. Waveshare
   links it from their wiki ("MAC driver", `CH34XSER_MAC.7z`); WCH also publishes it at
   https://www.wch-ic.com/downloads/CH34XSER_MAC_ZIP.html. After installing, approve it
@@ -160,12 +162,59 @@ for ESP-IDF v6.0 and newer.
 | Item | Why |
 |---|---|
 | USB-C **data** cable | Charge-only cables are the #1 cause of "no serial port". |
-| **USB 2.0 extension cable**, 0.5–1 m | Moves the 2.4 GHz radio away from the HA host. USB 3 ports and cables emit noise in the 2.4 GHz band that degrades Thread, Zigbee and Bluetooth. |
+| **Two USB 2.0 extension cables**, 1 m+ (one for the C6, one for the ZBT-2) | Moves the 2.4 GHz radio away from the HA host. USB 3 ports and cables emit noise in the 2.4 GHz band that degrades Thread, Zigbee and Bluetooth. |
 | AAA batteries ×2 for the TIMMERFLOTTE | The sensor enters pairing mode when batteries are inserted. |
 
-On the HA host, plan to plug the board (via the extension) into a **USB 2.0 port** if
-the host has one. On a Raspberry Pi the USB 2.0 ports are the black ones; the blue ones
-are USB 3.
+Right now the C6 board and the ZBT-2 hang off the **same Apple hub** on this Mac, and that
+hub also has a 10 Gb/s USB 3 side. Two 2.4 GHz radios next to each other, next to USB 3,
+is the worst case for both Zigbee and Thread. Give **each radio its own USB 2.0 extension
+cable** and keep the radios **at least about 1 m apart**, and away from the Mac, the
+monitor, the Cam Link and the USB 3 Ethernet adapter.
+
+---
+
+## Part B2 — The UTM VM that runs Home Assistant
+
+Checked on 2026-09-26 from the running VM. Items to confirm in UTM are marked ⚠️.
+
+### B2.1 USB passthrough slot
+
+- **What you have:** the VM runs on UTM's QEMU backend with an emulated USB controller
+  and **3 USB redirection slots**. The ZBT-2 already uses one.
+- **Install:** nothing. In phase 3 you'll pass **one** of the C6's two ports to the VM
+  (UTM toolbar → USB icon → pick the device). Only one of them goes to the VM; the hub
+  itself stays on the Mac.
+- **Verify (later):** in HA, **Settings → System → Hardware → All hardware** lists a
+  `/dev/ttyACM…` or `/dev/serial/by-id/…` entry for the C6.
+- **Why:** the OTBR app inside the VM must own the serial port. While the VM holds it,
+  the Mac can't flash the board; release it in UTM first.
+
+### B2.2 The VM and the Mac stay up
+
+- **Current state:** macOS system sleep is **off** (`sleep 0`), and restart after power
+  failure is **on**. Good.
+- **⚠️ Check in UTM:** make sure the VM starts automatically after a Mac reboot.
+  - Mac: **System Settings → General → Login Items → Open at Login → add UTM**.
+  - Then either start the VM by hand after reboots, or have a login item run
+    `open "utm://start?name=Home%20Assistant"`.
+- **Why:** the Mac is now your Thread border router. When the VM stops, the Thread
+  network keeps its mesh, but HA loses every Thread device.
+
+### B2.3 HAOS release channel
+
+- **Current state:** the VM runs **HAOS 17.0.rc1**, a release candidate.
+- **Recommendation:** fine to keep. If something odd shows up with USB or networking,
+  first check whether stable HAOS behaves the same.
+- **Verify:** **Settings → About** shows the Operating System version.
+
+### B2.4 Same network for the iPhone and HA
+
+- **⚠️ Tell me:** which Wi-Fi network (SSID/VLAN) does your iPhone use? HA is bridged to
+  the **untagged** LAN on `en0`, not the "IoT_Network" VLAN.
+- **Why:** during commissioning the iPhone must see HA's Thread border router via mDNS
+  (`_meshcop._udp`). It also has to reach HA directly on the LAN. mDNS and IPv6 link-local
+  traffic don't cross VLANs or subnets unless you run an mDNS reflector. If the iPhone is
+  on another VLAN, pairing fails with "Thread border router required".
 
 ---
 
@@ -233,7 +282,7 @@ yet.** Its settings depend on firmware decisions we make in steps 2–3.
 
 ## Part D — Phone
 
-In both cases the phone does the Bluetooth part of commissioning, then hands the device
+The iPhone does the Bluetooth part of commissioning, then hands the device
 the Thread credentials. So the phone must **know your HA Thread network's credentials**.
 That sync happens in step 4, but the prerequisites are below.
 
@@ -247,34 +296,23 @@ That sync happens in step 4, but the prerequisites are below.
 | Local Network permission ⚠️ | **Settings → Privacy & Security → Local Network → Home Assistant = On** | toggle is on | Without it the app cannot reach HA or discover devices on the LAN. |
 | Phone on the same LAN/Wi-Fi as HA | — | — | The phone must reach HA directly, not through remote access. |
 
-If you own a HomePod mini/HomePod 2 or an Apple TV 4K, those already run an Apple
-Thread network. That is fine, but tell me. It changes how we pick the preferred network
-in step 4.
-
-### D-Android
-
-| Item | Install | Verify | Why |
-|---|---|---|---|
-| Android 8.1 minimum, **12+ recommended** | System update | **Settings → About phone** | HA's minimum for Matter commissioning. |
-| HA Companion app, **full** Play Store version | Play Store: "Home Assistant" | App → **Settings → Companion app → About** | The F-Droid "minimal" build lacks Google Play services, so it cannot commission Matter or sync Thread credentials. |
-| Google Play services up to date | Play Store → Google Play services | **Settings → Apps → Google Play services** | Android's Matter commissioning and Thread credential store are part of Play services. |
-| Location permission **Allow all the time** for the HA app | **Settings → Apps → Home Assistant → Permissions → Location** | shows "Allow all the time" | HA's docs require it for Matter commissioning. |
-| Nearby devices + Bluetooth on | App permissions / quick settings | — | BLE commissioning. |
-| Phone on the same Wi-Fi as HA | — | — | Same as iOS. |
-
-If you own Google/Nest Thread border routers (Nest Hub 2nd gen, Nest Wi-Fi Pro), tell
-me. It affects step 4.
+You said you own no HomePod or Apple TV. So the iPhone will only know HA's Thread
+network, which avoids the most common "wrong preferred network" problem.
 
 ---
 
 ## Done? Checklist to send back
 
-- [ ] `idf.py --version` output from the container (A4)
+- [x] ESP-IDF image pulled; `idf.py --version` = ESP-IDF v6.1 (A4, done 2026-09-26)
 - [ ] `esptool version` (A5)
-- [ ] `ls /dev/cu.usbmodem*` and the `ioreg` lines with the board plugged in (A6)
-- [ ] HA install type and hardware, Core version, and whether the host has USB 2.0 ports (C1)
-- [ ] OTBR app and Matter Server app versions (C3, C5)
-- [ ] Phone OS and version, and any Apple/Google Thread border routers you own (D)
+- [x] Board ports identified; no driver needed (A6)
+- [ ] Two USB 2.0 extension cables in hand (B)
+- [ ] UTM starts the VM after a Mac reboot (B2.2)
+- [ ] Which Wi-Fi/VLAN the iPhone is on (B2.4)
+- [ ] HA Core version; IPv6 set to Automatic (C1, C2)
+- [ ] OTBR app installed but not started; Matter Server app version (C3, C5)
+- [ ] iOS version (D)
+- [ ] ZBT-2's current Zigbee channel: **Settings → Devices & services → Zigbee Home Automation → Configure** (needed to pick the Thread channel)
 
 ---
 
