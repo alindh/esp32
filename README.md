@@ -63,7 +63,9 @@ ae15413036e029e9cad505118b1586c0c415cb93fcdf9640bec14a640aad8568  ot_rcp-esp32c6
 
 **Build speed:** a full build takes about 35 seconds. `BUILD_JOBS` (default 8) caps
 parallelism. Uncapped, the build took over 25 minutes on this Mac, because Colima's 16
-vCPUs overcommit the 10 physical cores, which the HA VM also uses. A compiler cache lives in
+vCPUs overcommit the 10 physical cores, which the HA VM also uses. Variants: `EXTRA_SDKCONFIG=<overlay> DIST_DIR=<dir> scripts/build.sh` builds with an extra
+sdkconfig overlay into another folder, for example the untested native-USB variant in
+`firmware/variants/`. A compiler cache lives in
 the Docker volume `ot-rcp-ccache`; delete it with `docker volume rm ot-rcp-ccache`.
 
 ### `dist/` contents
@@ -83,11 +85,12 @@ One USB-C port feeds a CH334 hub. The hub exposes two serial devices to the host
 | Device | USB ID | Role here |
 |---|---|---|
 | CH343 USB-UART bridge to C6 UART0 | `1a86:55d3` | **RCP host link and flashing** |
-| C6 native USB Serial/JTAG | `303a:1001` | Not used yet; see CLAUDE.md open issues |
+| C6 native USB Serial/JTAG | `303a:1001` | Not used; see [docs/rcp-transport.md](docs/rcp-transport.md) |
 
 ## Docs
 
 - [INSTALL.md](INSTALL.md): prerequisites for the Mac, Home Assistant and the iPhone
+- [docs/rcp-transport.md](docs/rcp-transport.md): why the UART bridge, and the HA OTBR settings (460800, `flow_control: false`)
 - [CLAUDE.md](CLAUDE.md): decisions, pinned versions, open issues
 - Home Assistant setup checklist: phase 4, to come
 - Troubleshooting: phase 5, to come

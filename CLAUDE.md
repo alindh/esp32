@@ -37,6 +37,7 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 | 2026-09-26 | ZBT-2 stays on Zigbee; the C6 is the only Thread radio | User decision. Radios must be separated and channels coordinated. |
 | 2026-09-26 | iPhone uses untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>", the same LAN as HA on `en0`; not IoT_Network | User. Needed for mDNS `_meshcop._udp` discovery during commissioning. |
 | 2026-09-26 | **Start a fresh HA-owned Thread network; target channel 15.** In phase 4, before adding the OTBR integration, delete the orphaned preferred dataset "MyHomeNNNNNNNNNN" (ch 25, PAN 0xNNNN), so `_set_dataset` creates a new network on `DEFAULT_CHANNEL = 15`. | The user says the dataset's only likely source, the Aqara Hub M100, is broken. There is no Apple hub. HA has 0 Matter devices, so nothing depends on MyHome. Deleting is recoverable: the iPhone keychain still holds MyHome and can resend it. Ch 15 = 2425 MHz is 20 MHz above Zigbee ch 11. Recheck against the Hue Bridge's Zigbee channel; HA can move the Thread channel later. |
+| 2026-09-26 | **RCP transport = CH343 UART, 460800 8N1, no HW flow control. HA OTBR: `baudrate: 460800`, `flow_control: false`.** | Bench tests in docs/rcp-transport.md: init-deassert 20/20; flow control 0/5 (RTS drives the auto-reset circuit); the CH343 survives C6 resets, while native USB re-enumerates, which is bad for UTM passthrough. |
 | 2026-09-26 | Phone = iPhone; no other Thread BRs | User. Credential sync uses "Send credentials to phone". |
 
 ## Pinned versions (checked 2026-09-26)
@@ -134,4 +135,9 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)
    re-enumerates USB Serial/JTAG. The CH343 stays enumerated across C6 resets. Also check
    whether the OTBR opening the port toggles DTR/RTS and triggers the auto-reset circuit.
-4. Phase 3 decision pending: UART bridge vs USB Serial/JTAG. Leaning toward the CH343 UART. Native USB works after a power cycle but was seen stuck once (see Hardware facts).
+4. ~~Phase 3 transport decision~~ Done: CH343 UART (docs/rcp-transport.md).
+5. **The board currently runs the native-USB variant** (ELF SHA256 f21fa286…, `dist-usb/`). The
+   user rejected the flash-and-test command, yet the variant ended up on the board. It must be
+   reflashed with the UART build (`scripts/flash.sh`) before phase 4. Needs the user's OK.
+   The native-USB reset-recovery bench test was not run, at the user's request.
+6. Confirm the Linux `/dev/serial/by-id/` names inside the HA VM after passthrough.

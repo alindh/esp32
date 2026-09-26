@@ -4,7 +4,8 @@
 # Byte-identical output for identical inputs: no timestamps or absolute paths baked in.
 CONFIG_APP_REPRODUCIBLE_BUILD=y
 
-# Host transport: UART0 via the onboard CH343 bridge. This is the example's default,
-# pinned explicitly. 460800 baud, 8N1, no HW flow control (see main/esp_ot_config.h).
-# Phase 3 decides UART vs USB Serial/JTAG. See docs/ and CLAUDE.md.
+# Host transport: UART0 via the onboard CH343 bridge (decided 2026-09-26, docs/rcp-transport.md).
+# This is the example's default, pinned explicitly. The link parameters are constants in
+# ot_rcp/main/esp_ot_config.h, not Kconfig: 460800 baud, 8N1, UART_HW_FLOWCTRL_DISABLE.
+# They match the HA OTBR app with baudrate "460800" and flow_control: false.
 CONFIG_OPENTHREAD_RCP_UART=y
