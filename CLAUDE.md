@@ -33,10 +33,10 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 |---|---|---|
 | 2026-09-26 | Build in `espressif/idf` container pinned by digest. Flash with host esptool (Homebrew). | Reproducible toolchain, native arm64, and no USB passthrough on macOS. |
 | 2026-09-26 | ESP-IDF **v6.1** (fallback v6.0.3) | v6.1 is the current stable release, marked Latest. It has the newest OpenThread for a host running OTBR POSIX v2026.08. |
-| 2026-09-26 | HA = HAOS 17.0.rc1 aarch64 in a UTM (QEMU) VM on this Mac, bridged to `en0` | Confirmed by the user and the running VM. The RCP reaches it by UTM USB redirection. |
+| 2026-09-26 | HA = HAOS 18.3 stable, Core 2026.9.3, aarch64, in a UTM (QEMU) VM on this Mac, bridged to `en0` (VM MAC <vm-mac>, <ha-lan-ip>) | Confirmed by the user and the running VM. The RCP reaches it by UTM USB redirection. |
 | 2026-09-26 | ZBT-2 stays on Zigbee; the C6 is the only Thread radio | User decision. Radios must be separated and channels coordinated. |
 | 2026-09-26 | iPhone uses untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>", the same LAN as HA on `en0`; not IoT_Network | User. Needed for mDNS `_meshcop._udp` discovery during commissioning. |
-| 2026-09-26 | Thread channel: **15** (HA default) unless the 2.4 GHz Wi-Fi channel argues otherwise; alternative 25 | ZBT-2 Zigbee = channel 11 (2405 MHz), PAN ID 5047 (as shown in ZHA). 802.15.4 ch 15 = 2425 MHz, 20 MHz from Zigbee and in the gap between Wi-Fi ch 1 and 6. Ch 25 (2475 MHz) overlaps EU Wi-Fi ch 12–13. HA core `otbr/websocket_api.py` creates networks with `DEFAULT_CHANNEL = 15`; `get_allowed_channel` only restricts multiprotocol radios. `otbr/set_channel` can migrate later. |
+| 2026-09-26 | Thread channel: **not decided**. HA holds a preferred dataset "MyHomeNNNNNNNNNN" on ch 25 (PAN 0xNNNN, ext PAN <old-ext-pan-id>, source iOS app 2026-09-20). OTBR's config flow imports the preferred dataset into an empty RCP (`_set_dataset`), so the default is ch 25, not 15. | Verified with `thread/list_datasets` via the HA MCP and in HA core `otbr/config_flow.py`. Ch 25 = 2475 MHz is far from Zigbee ch 11 but overlaps EU Wi-Fi ch 12–13. |
 | 2026-09-26 | Phone = iPhone; no other Thread BRs | User. Credential sync uses "Send credentials to phone". |
 
 ## Pinned versions (checked 2026-09-26)
@@ -73,12 +73,23 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
   as not planned). Static IPv6 on HA broke IKEA Matter pairing for at least one user, so
   use IPv6 Automatic.
 
+## HA state (read via the HA MCP, 2026-09-26)
+
+- Apps: Matter Server 9.2.0 (started), Zigbee2MQTT 2.14.1 (ZBT-2, Zigbee ch 11), Mosquitto. No OTBR yet.
+- Integrations: `matter` loaded; `thread` loaded (zeroconf); `homeassistant_connect_zbt2`; `hue`
+  (the Hue Bridge has its own Zigbee channel, unknown); `homekit_controller` Aqara-Hub-M100
+  in setup_retry (the M100 can be a Thread BR); `unifi` in setup_retry, so no Wi-Fi channel data.
+- Network: `enp0s1` IPv4 <ha-lan-ip>/24, IPv6 method auto, link-local only (no IPv6 RA on
+  the LAN). `enp0s1.20` VLAN 20 exists (IPv6 disabled).
+- `dns-sd -B _meshcop._udp` from the Mac: no Thread BRs advertising.
+- iPhone: iPhone18,4, iOS 27.0, HA app 2026.9.1, location Always.
+
 ## Open issues
 
 1. ~~Colima VM disk full~~ **Resolved 2026-09-26.** The legacy `/var/lib/docker/overlay2`
    (~89 GB) was deleted with user approval. Docker 29 uses the containerd snapshotter,
    so it was unreferenced. Image v6.1 is pulled and `idf.py --version` = ESP-IDF v6.1.
-2. Open questions for the user: the 2.4 GHz Wi-Fi channel of "<home 2.4 GHz SSID>" (confirms Thread ch 15), and whether UTM
+2. Open questions for the user: **keep MyHomeNNNNNNNNNN (ch 25) or delete it and form a fresh network (ch 15)**; where MyHome came from (a past HomePod/Apple TV? the Aqara M100?); the Hue Bridge's Zigbee channel; the 2.4 GHz Wi-Fi channel of "<home 2.4 GHz SSID>"; and whether UTM
    autostarts the VM.
 3. Phase 3 input: in a VM, a USB device that re-enumerates can drop out of UTM's USB
    redirection. Find out whether an RCP reset (spinel reset → `esp_restart`)

@@ -13,12 +13,12 @@ from an official source and must be checked when you do that step.
 |---|---|---|
 | Dev machine | macOS 26.3, Apple Silicon | Build in a container, flash from the Mac. |
 | Container runtime | Colima, `default` profile, aarch64 | Only `/Volumes/Work` is shared into containers. |
-| Home Assistant | **HAOS 17.0.rc1 (aarch64) in a UTM VM on this same Mac** (QEMU backend, `/Volumes/Work/VM/Home Assistant.utm`) | The C6 reaches HA by UTM USB passthrough, and the VM's network must carry IPv6 and multicast. |
+| Home Assistant | **HAOS 18.3 stable, Core 2026.9.3 (aarch64), in a UTM VM on this same Mac** (QEMU backend, `/Volumes/Work/VM/Home Assistant.utm`). The disk image filename says 17.0.rc1, but that was only the install image. | The C6 reaches HA by UTM USB passthrough, and the VM's network must carry IPv6 and multicast. |
 | VM network | UTM **bridged** to `en0` (wired Ethernet) | Good: HA sits directly on your LAN. The Mac also has a VLAN "IoT_Network" on `en0`; HA is on the untagged LAN. |
-| Phone | **iPhone** | Uses "Send credentials to phone" in the HA app. |
-| Other radios | Home Assistant **Connect ZBT-2**, passed to the VM, **stays on Zigbee** | The C6 does Thread only. Keep the two radios apart and on non-overlapping channels. |
+| Phone | **iPhone18,4, iOS 27.0, HA app 2026.9.1, location permission "Always"** | Uses "Send credentials to phone" in the HA app. |
+| Other radios | Home Assistant **Connect ZBT-2**, passed to the VM, **stays on Zigbee** under **Zigbee2MQTT** (not ZHA). There is also a **Hue Bridge** with its own Zigbee network, and an **Aqara Hub M100**, which can be a Thread border router. | The C6 does Thread only. Keep the two radios apart and on non-overlapping channels. |
 | Zigbee | ZBT-2 on **channel 11** (2405 MHz), PAN ID 5047 | Thread must use a different 802.15.4 channel, well away from 11. |
-| Other Thread border routers | None | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
+| Other Thread border routers | None seen on the LAN via mDNS on 2026-09-26. **But HA already stores an Apple-style Thread network, see B2.5.** | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
 | Board | Waveshare ESP32-C6-DEV-KIT-N8 | See A6 for the ports. |
 
 ---
@@ -203,10 +203,8 @@ Checked on 2026-09-26 from the running VM. Items to confirm in UTM are marked �
 
 ### B2.3 HAOS release channel
 
-- **Current state:** the VM runs **HAOS 17.0.rc1**, a release candidate.
-- **Recommendation:** fine to keep. If something odd shows up with USB or networking,
-  first check whether stable HAOS behaves the same.
-- **Verify:** **Settings → About** shows the Operating System version.
+- **Confirmed 2026-09-26 via HA:** HAOS **18.3 on the stable channel**, Supervisor
+  2026.09.2. Nothing to do.
 
 ### B2.4 Same network for the iPhone and HA
 
@@ -224,6 +222,25 @@ Checked on 2026-09-26 from the running VM. Items to confirm in UTM are marked �
 - **Why:** during commissioning the iPhone must find HA's Thread border router via mDNS
   and reach HA directly. mDNS and IPv6 link-local traffic don't cross VLANs.
 
+### B2.5 Existing Thread network already stored in HA
+
+Found on 2026-09-26 in **Settings → Devices & services → Thread**:
+
+| Network name | Channel | PAN ID | Extended PAN ID | Source | Preferred |
+|---|---|---|---|---|---|
+| MyHomeNNNNNNNNNN | 25 | 0xNNNN | <old-ext-pan-id> | iOS app, 2026-09-20 | **yes** |
+
+- "MyHome…" is the naming Apple home hubs use for Thread networks. The iPhone had these
+  credentials and sent them to HA.
+- No border router for it was advertising on the LAN when checked. The Aqara Hub M100
+  in HA is currently unreachable; it could be a source.
+- **Why it matters:** when the OTBR integration first connects to an empty radio, HA
+  loads the **preferred** network into it (`otbr/config_flow.py`, `_set_dataset`). Only
+  when no preferred network exists does it create a new one on channel 15. So as things
+  stand, the C6 would **join MyHomeNNNNNNNNNN on channel 25**.
+- **Decision needed before phase 4:** keep this network or start fresh. See CLAUDE.md
+  open issues.
+
 ---
 
 ## Part C — Home Assistant (HA OS)
@@ -236,12 +253,14 @@ yet.** Its settings depend on firmware decisions we make in steps 2–3.
 ### C1. Home Assistant up to date
 
 - **Install:** **Settings → System → Updates**, install any Core / OS / Supervisor updates.
+- **Status 2026-09-26: done.** Core 2026.9.3.
 - **Verify:** **Settings → About** shows Core **2025.7.0 or newer**. That is the minimum
   the current OTBR app (3.2.0) declares.
 - **Why:** older Core versions cannot run the current OTBR app.
 
 ### C2. IPv6 enabled, set to Automatic
 
+- **Status 2026-09-26: done.** `enp0s1` IPv6 = auto. It has only a link-local address, because the LAN has no IPv6 router. That's fine; the OTBR advertises its own Thread routes.
 - **Install:** **Settings → System → Network**. Set IPv6 to **Automatic** on the main
   interface, then save.
 - **Verify:** the network page shows an IPv6 address (at least a link-local `fe80::`
@@ -263,6 +282,7 @@ yet.** Its settings depend on firmware decisions we make in steps 2–3.
 
 ### C4. Thread and OpenThread Border Router integrations
 
+- **Status 2026-09-26:** the **Thread** integration is already loaded, added by discovery. OTBR isn't installed yet.
 - **Install:** nothing to do now. Once the OTBR app is started (later step), HA
   auto-discovers it. You will then accept **OpenThread Border Router** under
   **Settings → Devices & services**, which also brings in the **Thread** integration.
@@ -273,6 +293,7 @@ yet.** Its settings depend on firmware decisions we make in steps 2–3.
 
 ### C5. Matter integration + Matter Server app
 
+- **Status 2026-09-26: done.** Matter integration loaded; Matter Server app 9.2.0 running.
 - **Install:** **Settings → Devices & services → Add integration → Matter**, then
   **Submit**. On HA OS this installs and starts the official **Matter Server** app for
   you.
@@ -317,10 +338,13 @@ network, which avoids the most common "wrong preferred network" problem.
 - [ ] Two USB 2.0 extension cables in hand (B)
 - [ ] UTM starts the VM after a Mac reboot (B2.2)
 - [x] iPhone on untagged Wi-Fi "<home 2.4 GHz SSID>" / "<home SSID>" (B2.4)
-- [ ] HA Core version; IPv6 set to Automatic (C1, C2)
-- [ ] OTBR app installed but not started; Matter Server app version (C3, C5)
-- [ ] iOS version (D)
-- [x] ZBT-2 Zigbee channel 11 (2405 MHz), PAN ID 5047
+- [x] HA Core 2026.9.3; IPv6 automatic (C1, C2)
+- [ ] OTBR app installed but not started (C3)
+- [x] Matter integration + Matter Server 9.2.0 (C5)
+- [x] iOS 27.0, HA app 2026.9.1 (D)
+- [ ] Decide: keep Thread network MyHomeNNNNNNNNNN (ch 25) or create a fresh one (B2.5)
+- [x] ZBT-2 Zigbee channel 11 (2405 MHz), PAN ID 5047 (from Zigbee2MQTT)
+- [ ] Hue Bridge Zigbee channel (Hue app → Settings → Bridge → Zigbee channel)
 - [ ] 2.4 GHz Wi-Fi channel used by "<home 2.4 GHz SSID>" (check the router/AP admin page; note if it is set to Auto). Needed to confirm the Thread channel.
 
 ---
