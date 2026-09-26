@@ -143,6 +143,30 @@ Thread diagnostic entities (channel, routing role, network name, faults) exist b
 **Factory reset** ⚠️ (third-party guide): hold the system button ~10 s, until the red LED
 stops blinking. Do this before retrying if a pairing attempt got halfway.
 
+## 6b. Link quality and update rate (measured 2026-09-26, sensor in its final spot)
+
+Read from the sensor's **Thread Network Diagnostics** cluster (0/53) via the Matter Server
+websocket (`get_node`). HA disables the equivalent entities by default and has no RSSI entity.
+
+| Attribute (sensor's view of its parent, the C6) | Value |
+|---|---|
+| Routing role | sleepy end device, channel 15 |
+| Link quality (LQI, 0–3) | **3** in and out (best) |
+| Average / last RSSI | **−49 / −51 dBm** |
+| Frame error rate / message error rate | 4 % / 0 % |
+
+**Update rate is set by the sensor, not HA.** The ICD Management cluster (0/70) reports
+`IdleModeDuration` = 300 s and `ActiveModeDuration` = 1000 ms, with feature map 0, so it's a
+short-idle-time ICD. The sensor sleeps and wakes about every 5 minutes, then reports anything
+that changed. Observed updates arrived about 4–5 min apart. Matter has no Zigbee-style
+"configure reporting". HA's Matter Server can only subscribe with min/max intervals, and an ICD
+may stretch the max interval up to its idle duration. Sampling rate and change thresholds are
+IKEA firmware internals. HA records a new state only when the value changes.
+
+The OTBR REST API (`:8081`, app-internal) answers `GET /node` and `/api/devices`. Its
+diagnostic actions (`POST /api/actions`) require `Content-Type: application/vnd.api+json`,
+which the HA MCP app proxy can't send (it forces `application/json` → HTTP 415).
+
 ## 7. Afterwards
 
 - Move the sensor to its real spot. It's a sleepy end device that talks through a router,
