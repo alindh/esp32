@@ -68,9 +68,9 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 
 ## Open issues
 
-1. **Colima VM disk full** (96 GB, ~87 GB of orphaned buildkit layers from 2025). The
-   ESP-IDF image pull failed. The user must choose a fix; see INSTALL.md A3. Nothing
-   was deleted.
+1. ~~Colima VM disk full~~ **Resolved 2026-09-26.** The legacy `/var/lib/docker/overlay2`
+   (~89 GB) was deleted with user approval. Docker 29 uses the containerd snapshotter,
+   so it was unreferenced. Image v6.1 is pulled and `idf.py --version` = ESP-IDF v6.1.
 2. Unknown user inputs: HA install type and hardware, USB 2.0 ports on the host, phone
    OS, and whether they own Apple or Google Thread border routers.
 3. Confirm the macOS device names and VIDs/PIDs for both ports once the board is plugged in.

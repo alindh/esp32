@@ -65,36 +65,11 @@ from an official source and must be checked when you do that step.
   The build script will resolve the real path itself, but keep this in mind for manual
   `docker run` commands.
 - **Why:** runs the pinned ESP-IDF toolchain without installing it on the Mac.
-- **⚠️ Blocker found on 2026-09-26 — the Colima VM disk is full.** The first pull of
-  the ESP-IDF image failed with `no space left on device`. What I found:
-
-  | Where | Size |
-  |---|---|
-  | VM disk | 96 GB, 198 MB free |
-  | What `docker system df` accounts for | ~5.6 GB |
-  | Orphaned build-layer dirs in `/var/lib/docker/overlay2` (374 dirs, created Feb–Mar 2025) | ~87 GB |
-
-  Docker does not track those layers, so `docker system prune` / `docker builder prune`
-  will likely **not** free them. I did not delete anything. Pick one fix:
-
-  1. **Recommended: a separate Colima profile just for ESP-IDF.** It is isolated, and
-     your existing containers stay untouched:
-     ```sh
-     colima start esp --arch aarch64 --vm-type vz --cpu 8 --memory 8 --disk 40 \
-       --mount /Volumes/Work:w
-     docker context use colima-esp      # switch back later with: docker context use colima
-     ```
-  2. **Grow the default VM disk.** This is non-destructive. Colima can grow a disk but
-     never shrink it:
-     ```sh
-     colima stop && colima start --disk 150
-     ```
-  3. **Reclaim the orphaned layers.** This is your call, since they may relate to other
-     projects. The clean way is `docker save` any images you need, then
-     `colima delete` + `colima start`, which recreates the VM from scratch.
-
-  **Verify:** `colima ssh -- df -h /` shows **at least 15 GB free** before continuing to A4.
-  If you choose option 1, also run `docker context show`; it must print `colima-esp`.
+- **Disk space (resolved 2026-09-26).** The Colima VM disk was full. Docker 29 had
+  switched to the containerd image store, so the ~89 GB legacy
+  `/var/lib/docker/overlay2` directory was unused. It was deleted with your approval.
+  Running containers were unaffected.
+  **Verify:** `colima ssh -- df -h /` shows **at least 15 GB free** before A4.
 
 ### A4. ESP-IDF v6.1 container image (pinned)
 
@@ -106,7 +81,7 @@ toolchain under you.
   ```sh
   docker pull espressif/idf:v6.1@sha256:81893c71bb5e570088901f21def8684c25cd2a9020281bd01b843a7655edb18c
   ```
-  The image is several GB.
+  The image is several GB. Already pulled and verified on 2026-09-26.
 - **Verify:**
   ```sh
   docker run --rm espressif/idf:v6.1@sha256:81893c71bb5e570088901f21def8684c25cd2a9020281bd01b843a7655edb18c idf.py --version
