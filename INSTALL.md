@@ -17,6 +17,7 @@ from an official source and must be checked when you do that step.
 | VM network | UTM **bridged** to `en0` (wired Ethernet) | Good: HA sits directly on your LAN. The Mac also has a VLAN "IoT_Network" on `en0`; HA is on the untagged LAN. |
 | Phone | **iPhone** | Uses "Send credentials to phone" in the HA app. |
 | Other radios | Home Assistant **Connect ZBT-2**, passed to the VM, **stays on Zigbee** | The C6 does Thread only. Keep the two radios apart and on non-overlapping channels. |
+| Zigbee | ZBT-2 on **channel 11** (2405 MHz), PAN ID 5047 | Thread must use a different 802.15.4 channel, well away from 11. |
 | Other Thread border routers | None | The HA network will be the only Thread network, which keeps the preferred-network step simple. |
 | Board | Waveshare ESP32-C6-DEV-KIT-N8 | See A6 for the ports. |
 
@@ -319,7 +320,8 @@ network, which avoids the most common "wrong preferred network" problem.
 - [ ] HA Core version; IPv6 set to Automatic (C1, C2)
 - [ ] OTBR app installed but not started; Matter Server app version (C3, C5)
 - [ ] iOS version (D)
-- [ ] ZBT-2's current Zigbee channel: **Settings → Devices & services → Zigbee Home Automation → Configure** (needed to pick the Thread channel)
+- [x] ZBT-2 Zigbee channel 11 (2405 MHz), PAN ID 5047
+- [ ] 2.4 GHz Wi-Fi channel used by "<home 2.4 GHz SSID>" (check the router/AP admin page; note if it is set to Auto). Needed to confirm the Thread channel.
 
 ---
 
