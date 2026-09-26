@@ -1,0 +1,4 @@
+# Variant: RCP host link over the ESP32-C6's native USB Serial/JTAG instead of UART0/CH343.
+# Build with: EXTRA_SDKCONFIG=firmware/variants/usb-serial-jtag.defaults DIST_DIR=dist-usb scripts/build.sh
+# Baud rate and flow control are ignored on this link (USB CDC).
+CONFIG_OPENTHREAD_RCP_USB_SERIAL_JTAG=y

@@ -14,13 +14,19 @@ command -v docker >/dev/null || { echo "docker not found (see INSTALL.md A3)" >&
 # Parallelism: this Mac has 10 cores shared by Colima and the HA VM (UTM). Overcommitting
 # (ninja's default is nproc+2 = 18 jobs on 16 vCPUs) made compiles ~10x slower, so cap it.
 JOBS="${BUILD_JOBS:-8}"
+# Optional: EXTRA_SDKCONFIG=<repo-relative overlay> DIST_DIR=<repo-relative dir> for variants.
+EXTRA_SDKCONFIG="${EXTRA_SDKCONFIG:-}"
+DIST_DIR="${DIST_DIR:-dist}"
+EXTRA_DEFAULTS=""
+[ -z "$EXTRA_SDKCONFIG" ] || EXTRA_DEFAULTS=";/w/$EXTRA_SDKCONFIG"
 echo ">> Building ot_rcp for $IDF_TARGET with $IDF_IMAGE (jobs=$JOBS)"
-mkdir -p "$ROOT/dist"
+mkdir -p "$ROOT/$DIST_DIR"
 
 # Build in the container's own filesystem (fast, fixed paths); only copy results to /w.
 docker run --rm \
   -e IDF_TARGET="$IDF_TARGET" -e IDF_COMMIT="$IDF_COMMIT" \
   -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e JOBS="$JOBS" \
+  -e EXTRA_DEFAULTS="$EXTRA_DEFAULTS" -e DIST_DIR="$DIST_DIR" \
   --cpus "$JOBS" \
   -v "$ROOT:/w" \
   -v ot-rcp-ccache:/root/.cache/ccache \
@@ -39,13 +45,13 @@ cp -r "$IDF_PATH/examples/openthread/ot_rcp" "$P"
 cd "$P"
 idf.py -B "$B" \
   -D SDKCONFIG="$B/sdkconfig" \
-  -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/w/firmware/sdkconfig.defaults.project" \
+  -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/w/firmware/sdkconfig.defaults.project$EXTRA_DEFAULTS" \
   set-target "$IDF_TARGET"
 # set-target configured the build dir; run ninja directly so the job count is honoured.
 ninja -C "$B" -j "$JOBS" all
 idf.py -B "$B" -D SDKCONFIG="$B/sdkconfig" merge-bin -o merged.bin >/dev/null
 
-D=/w/dist
+D="/w/$DIST_DIR"
 rm -rf "$D"/*
 cp "$B/merged.bin" "$D/ot_rcp-$IDF_TARGET-merged.bin"
 cp "$B/esp_ot_rcp.bin" "$B/bootloader/bootloader.bin" "$B/partition_table/partition-table.bin" "$D/"
@@ -63,6 +69,5 @@ cp "$B/sdkconfig" "$D/sdkconfig.used"
 chown -R "$HOST_UID:$HOST_GID" "$D" 2>/dev/null || true
 '
 
-echo ">> Done. Artifacts in $ROOT/dist:"
-cat "$ROOT/dist/build-info.txt"
-cat "$ROOT/dist/SHA256SUMS"
+echo ">> Done. Artifacts in $ROOT/$DIST_DIR:"
+command cat "$ROOT/$DIST_DIR/build-info.txt" "$ROOT/$DIST_DIR/SHA256SUMS"
