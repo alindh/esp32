@@ -8,3 +8,4 @@ sdkconfig.old
 dist/
 # macOS
 .DS_Store
+__pycache__/

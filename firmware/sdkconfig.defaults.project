@@ -1,0 +1,10 @@
+# Project overlay, applied on top of ESP-IDF's examples/openthread/ot_rcp/sdkconfig.defaults.
+# Keep this minimal and commented. Every line is a deliberate deviation or pin.
+
+# Byte-identical output for identical inputs: no timestamps or absolute paths baked in.
+CONFIG_APP_REPRODUCIBLE_BUILD=y
+
+# Host transport: UART0 via the onboard CH343 bridge. This is the example's default,
+# pinned explicitly. 460800 baud, 8N1, no HW flow control (see main/esp_ot_config.h).
+# Phase 3 decides UART vs USB Serial/JTAG. See docs/ and CLAUDE.md.
+CONFIG_OPENTHREAD_RCP_UART=y
