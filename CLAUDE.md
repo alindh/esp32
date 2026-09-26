@@ -136,8 +136,8 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    re-enumerates USB Serial/JTAG. The CH343 stays enumerated across C6 resets. Also check
    whether the OTBR opening the port toggles DTR/RTS and triggers the auto-reset circuit.
 4. ~~Phase 3 transport decision~~ Done: CH343 UART (docs/rcp-transport.md).
-5. **The board currently runs the native-USB variant** (ELF SHA256 f21fa286…, `dist-usb/`). The
-   user rejected the flash-and-test command, yet the variant ended up on the board. It must be
-   reflashed with the UART build (`scripts/flash.sh`) before phase 4. Needs the user's OK.
-   The native-USB reset-recovery bench test was not run, at the user's request.
+5. ~~Board on the native-USB variant~~ **Resolved:** the earlier abort was an accidental keypress
+   (user, 2026-09-26). The native-USB variant was then tested: 0/20 plus silent probe, the port
+   present but mute, as in the earlier stuck state (no power cycle possible remotely). The board
+   was reflashed with the UART build and the probe OK: Spinel 4.3, RCP API 11.
 6. Confirm the Linux `/dev/serial/by-id/` names inside the HA VM after passthrough.

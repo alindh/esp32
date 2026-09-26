@@ -69,8 +69,11 @@ the auto-reset circuit rather than to a C6 CTS pin. The link cannot work, which 
   circuit.
 
 A native-USB variant exists for experiments (`firmware/variants/usb-serial-jtag.defaults`,
-built into `dist-usb/`). It is **not bench-tested** for reset recovery, and it isn't the
-recommended configuration.
+built into `dist-usb/`). Flashed on 2026-09-26, it answered **0/20** reset cycles and no plain
+probe either, while the port stayed present. That is the same "enumerated but silent"
+symptom seen earlier, which only a power cycle cleared. Without a power cycle between flashing
+and testing, the result is inconclusive. Either way, it doesn't support switching to native
+USB.
 
 ## HA OTBR app settings to use
 
