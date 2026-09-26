@@ -17,6 +17,15 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
 - Phases: 1 INSTALL.md → 2 repo, build and flash → 3 UART vs USB Serial/JTAG and
   sdkconfig → 4 HA checklist → 5 troubleshooting doc.
 
+## Public repo rule
+
+This repo is **public** at https://github.com/alindh/esp32 (pushed 2026-09-26). Personal
+identifiers are placeholders: `<home SSID>`, `<ha-lan-ip>`, `<vm-mac>`, `XXXXXXXXXX` (CH343
+serial), `10:51:db:xx:xx:xx`, `ha-thread-XXXX`, `<ext-pan-id>`, `<border-agent-id>`, `<room>`.
+**Never commit** Thread dataset TLVs or network keys, Wi-Fi SSIDs, LAN IPs, MAC/serial numbers,
+or room/address names. A pre-scrub backup bundle is kept locally only
+(`/Volumes/Work/Projects/esp32-before-scrub.bundle`).
+
 ## Environment facts
 
 - Dev machine: macOS 26.3, Apple Silicon (arm64), Homebrew 7.x, Python 3.14 (Homebrew).
