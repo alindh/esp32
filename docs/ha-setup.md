@@ -104,7 +104,7 @@ dns-sd -L "Home Assistant OpenThread Border Router #XXXX" _meshcop._udp local.  
 
 The suffix is the last 2 bytes of the border router's extended address.
 
-## 5. Send the Thread credentials to the iPhone 🧑
+## 5. Send the Thread credentials to the iPhone 🧑 ✅
 
 In the **HA Companion app on the iPhone** (not a browser):
 **Settings → Devices & services → Thread → Configure**, and at the bottom of the preferred
@@ -114,7 +114,7 @@ Why: iOS commissions Matter-over-Thread devices with the Thread credentials in t
 keychain. Without them, pairing fails with "this device requires a border router". The
 keychain still holds the old MyHome network too; that's harmless.
 
-## 6. Commission the TIMMERFLOTTE 🧑
+## 6. Commission the TIMMERFLOTTE 🧑 ✅ (2026-09-26, first try)
 
 Do the first pairing **within a few metres of the C6**.
 
@@ -128,7 +128,17 @@ Do the first pairing **within a few metres of the C6**.
    Matter Server takes over.
 
 **Verify:** a device with temperature, humidity and battery entities appears under
-**Matter**. In **Thread → Configure**, the network shows a new child/node.
+**Matter**. Result on 2026-09-26:
+
+| | |
+|---|---|
+| Device | IKEA of Sweden "TIMMERFLOTTE temp/hmd sensor", HW P2.1, FW 1.0.21 |
+| Node type | `sleepy_end_device`, network `ha-thread-XXXX` |
+| Fabrics | Apple Keychain (the iPhone's commissioning fabric) + Home Assistant |
+| First readings | 24.46 °C, 56.96 % RH, battery 100 % |
+
+Thread diagnostic entities (channel, routing role, network name, faults) exist but are
+**disabled by default**. Enable them on the device page if you want them.
 
 **Factory reset** ⚠️ (third-party guide): hold the system button ~10 s, until the red LED
 stops blinking. Do this before retrying if a pairing attempt got halfway.

@@ -154,4 +154,7 @@ first Matter-over-Thread device is an IKEA TIMMERFLOTTE temp/humidity sensor.
    **Gotcha:** after create_network, the meshcop mDNS record still said nn=MyHome…; an app
    restart republished it (#XXXX, nn=ha-thread-XXXX). The old #YYYY record still resolved from
    the Mac afterwards, likely the mDNS cache; recheck.
-   Remaining: iPhone "Send credentials to phone", then commission the TIMMERFLOTTE.
+   **Done:** the user sent credentials to the iPhone and commissioned the TIMMERFLOTTE on the
+   first try (12:37). Node 'TIMMERFLOTTE <room>', sleepy_end_device on ha-thread-XXXX, FW
+   1.0.21, fabrics Apple Keychain + HA. At 12:38 the old #YYYY meshcop record is still visible
+   alongside #XXXX; open question whether the OTBR or the Mac cache serves it.
